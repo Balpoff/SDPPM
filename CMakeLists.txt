@@ -1,14 +1,11 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.22)
+set(CMAKE_CXX_STANDARD 20)
+project(CircularBuffer)
 
-project(circ_buffer)
+include_directories(${PROJECT_SOURCE_DIR}/include)
 
-enable_testing()
+add_executable(CircularBuffer scr/main.cpp include/CircularBuffer.h)
 
-set(SOURCE main.cpp)
-set(STATIC_LIB circular_buffer.cpp)
-
-
-set(CMAKE_CXX_STANDARD 14)
-add_library(circular_buffer STATIC ${STATIC_LIB})
-add_executable(main ${SOURCE})
-target_link_libraries(main circular_buffer gtest gmock)
+add_library(CircularBuffer_Lib SHARED include/CircularBuffer.h)
+set_target_properties(CircularBuffer_Lib PROPERTIES LINKER_LANGUAGE CXX)
+add_subdirectory(test)
