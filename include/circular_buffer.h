@@ -1,125 +1,343 @@
-#include <iostream>
 #pragma once
 
-typedef int value_type;
+#include <vector>
+#include <iostream>
+#include <stdexcept>
+#include <cstring>
 
+template<typename T>
 class CircularBuffer {
-private:
-	value_type* buffer;
-	int actual_length;
-	int cont_length;
-	class iterator : public std::iterator<std::output_iterator_tag, value_type> {
-	private:
-		CircularBuffer& container_;
-		size_t index_{ 0 };
-		bool first_step;
-	public:
-		value_type& operator*() const;
-		iterator& operator+(int N);
-		iterator& operator++();
-		iterator operator++(int);
-		bool operator!=(const iterator& right) const;
-		bool operator==(const iterator& right) const;
-		iterator(CircularBuffer& container, size_t index_ = 0);
-	};
+    T *buffer_;
+    int begin_;
+    int end_;
+    int size_;
+    int capacity_;
 public:
-	int start_val, end_val;
-	class iterator;
-	CircularBuffer();
-	CircularBuffer(const CircularBuffer& cb);
-	~CircularBuffer();
-	///Конструирует буфер заданной ёмкости.
-	///Designs Circular Buffer with given capacity
-	CircularBuffer(int capacity);
-	//Конструирует буфер заданной ёмкости, целиком заполняет его элементом elem.
-	///Designs Circular Buffer with given capacity and fills elem into every node
-	CircularBuffer(int capacity, const value_type& elem);
+    CircularBuffer()
+            : buffer_{},
+              begin_{},
+              end_{},
+              size_{},
+              capacity_{} {}
 
-	//Доступ по индексу. Не проверяют правильность индекса.
-	///Provides access by index without checking correctness of given index
-	value_type& operator[](int i);
-	const value_type& operator[](int i) const;
+    ~CircularBuffer() {
+        if (capacity_ == 0)
+            return;
 
-	//Доступ по индексу. Методы бросают исключение в случае неверного индекса.
-	///Provides access by index safely(with checking correctness of given index)
-	value_type& at(int i);
-	const value_type& at(int i) const;
-	iterator begin();
-	iterator end();
-	//Pointer to first element
-	value_type& front(); //Ссылка на первый элемент.
-	//Pointer to last element
-	value_type& back();  //Ссылка на последний элемент.
-	const value_type& front() const;
-	const value_type& back() const;
+        delete[](buffer_);
+    }
 
-	int give_index_in_circle(int index);
+    CircularBuffer(const CircularBuffer &cb)
+            : buffer_{new T[cb.capacity_]},
+              begin_{},
+              end_{},
+              size_{},
+              capacity_{cb.capacity_} {
+        for (int i = 0; i < cb.size_; i++)
+            push_back(cb[i]);
+    };
 
-	//Линеаризация - сдвинуть кольцевой буфер так, что его первый элемент
-	//переместится в начало аллоцированной памяти. Возвращает указатель 
-	//на первый элемент.
-	//Linearize circular buffer(buffer will be rotated so that the first element will be literally the first)
-	value_type* linearize();
-	//Проверяет, является ли буфер линеаризованным.
-	//Method for checking buffer linearization
-	bool is_linearized() const;
-	//Сдвигает буфер так, что по нулевому индексу окажется элемент 
-	//с индексом new_begin.
-	//Rotates buffer so that the element with index 'new_begin' will be the first
-	void rotate(int new_begin);
-	//Количество элементов, хранящихся в буфере.
-	//Size of buffer(number of elements contained in the buffer)
-	int size() const;
-	bool empty() const;
-	//true, если size() == capacity().
-	//Method for checking buffer fullness
-	bool full() const;
-	//Количество свободных ячеек в буфере.
-	//Returns number of free nodes of buffer
-	int reserve() const;
-	//ёмкость буфера
-	//Returns buffer capacity
-	int capacity() const;
+    //РљРѕРЅСЃС‚СЂСѓРёСЂСѓРµС‚ Р±СѓС„РµСЂ Р·Р°РґР°РЅРЅРѕР№ С‘РјРєРѕСЃС‚Рё.
+    explicit CircularBuffer(int capacity) : CircularBuffer() {
+        capacity_ = capacity;
+        buffer_ = new T[capacity];
+    }
 
-	void set_capacity(int new_capacity);
-	//Изменяет размер буфера.
-	//В случае расширения, новые элементы заполняются элементом item.
-	//Method for changing buffer size, if buffer will become bigger new nodes will contain 'item'
-	void resize(int new_size, const value_type& item = value_type());
-	//Оператор присваивания.
-	//Assigment operator
-	CircularBuffer& operator=(const CircularBuffer& cb);
-	//Обменивает содержимое буфера с буфером cb.
-	//Method for swapping buffers contents
-	void swap(CircularBuffer& cb);
+    //РљРѕРЅСЃС‚СЂСѓРёСЂСѓРµС‚ Р±СѓС„РµСЂ Р·Р°РґР°РЅРЅРѕР№ С‘РјРєРѕСЃС‚Рё, С†РµР»РёРєРѕРј Р·Р°РїРѕР»РЅСЏРµС‚ РµРіРѕ СЌР»РµРјРµРЅС‚РѕРј elem.
+    CircularBuffer(int capacity, const T &elem) : CircularBuffer(capacity) {
+        size_ = capacity_;
+        end_ = capacity - 1;
+        for (int i = 0; i < capacity; i++)
+            buffer_[i] = elem;
+    }
 
-	//Добавляет элемент в конец буфера. 
-	//Если текущий размер буфера равен его ёмкости, то переписывается
-	//первый элемент буфера (т.е., буфер закольцован). 
-	//Push element in the back of buffer(if buffer is full, item will be placed at the beginning of the buffer)
-	void push_back(const value_type& item = value_type());
-	//Добавляет новый элемент перед первым элементом буфера. 
-	//Аналогично push_back, может переписать последний элемент буфера.
-	//Works exactly the same as the push_back but item will be placed at the beginning of the buffer(if buffer is full, item will be placed at the end of the buffer)
-	void push_front(const value_type& item = value_type());
-	//удаляет последний элемент буфера.
-	//Removes the last element of buffer
-	void pop_back();
-	//удаляет первый элемент буфера.
-	//Removes the first element of buffer
-	void pop_front();
+    //Р”РѕСЃС‚СѓРї РїРѕ РёРЅРґРµРєСЃСѓ. РќРµ РїСЂРѕРІРµСЂСЏСЋС‚ РїСЂР°РІРёР»СЊРЅРѕСЃС‚СЊ РёРЅРґРµРєСЃР°.
+    T &operator[](int i) {
+        return buffer_[(begin_ + i) % capacity_];
+    }
+    const T &operator[](int i) const {
+        return buffer_[(begin_ + i) % capacity_];
+    }
 
-	//Вставляет элемент item по индексу pos. Ёмкость буфера остается неизменной.
-	//Insert element item by the index pos. Buffer capacity remains unchanged
-	void insert(int pos, const value_type& item = value_type());
-	//Удаляет элементы из буфера в интервале [first, last).
-	//Removes buffer's elements in interval [first, last)
-	void erase(int first, int last);
-	//Очищает буфер.
-	//Clears the buffer
-	void clear();
+    //Р”РѕСЃС‚СѓРї РїРѕ РёРЅРґРµРєСЃСѓ. РњРµС‚РѕРґС‹ Р±СЂРѕСЃР°СЋС‚ РёСЃРєР»СЋС‡РµРЅРёРµ РІ СЃР»СѓС‡Р°Рµ РЅРµРІРµСЂРЅРѕРіРѕ РёРЅРґРµРєСЃР°.
+    T &at(int i) {
+        if (i < 0 || i >= size_) {
+            throw std::out_of_range("Invalid index");
+        }
+        return buffer_[(begin_ + i) % capacity_];
+    }
+    const T &at(int i) const {
+        if (i < 0 || i >= size_) {
+            throw std::out_of_range("Invalid index");
+        }
+        return buffer_[(begin_ + i) % capacity_];
+    }
 
-	friend bool operator==(const CircularBuffer& a, const CircularBuffer& b);
-	friend bool operator!=(const CircularBuffer& a, const CircularBuffer& b);
+    //РЎСЃС‹Р»РєР° РЅР° РїРµСЂРІС‹Р№ СЌР»РµРјРµРЅС‚.
+    T &front() {
+        return buffer_[begin_];
+    }
+    //РЎСЃС‹Р»РєР° РЅР° РїРѕСЃР»РµРґРЅРёР№ СЌР»РµРјРµРЅС‚.
+    T &back() {
+        return buffer_[end_];
+    }
+    const T &front() const {
+        return buffer_[begin_];
+    }
+    const T &back() const {
+        return buffer_[end_];
+    }
+
+    //Р›РёРЅРµР°СЂРёР·Р°С†РёСЏ - СЃРґРІРёРЅСѓС‚СЊ РєРѕР»СЊС†РµРІРѕР№ Р±СѓС„РµСЂ С‚Р°Рє, С‡С‚Рѕ РµРіРѕ РїРµСЂРІС‹Р№ СЌР»РµРјРµРЅС‚
+    //РїРµСЂРµРјРµСЃС‚РёС‚СЃСЏ РІ РЅР°С‡Р°Р»Рѕ Р°Р»Р»РѕС†РёСЂРѕРІР°РЅРЅРѕР№ РїР°РјСЏС‚Рё. Р’РѕР·РІСЂР°С‰Р°РµС‚ СѓРєР°Р·Р°С‚РµР»СЊ
+    //РЅР° РїРµСЂРІС‹Р№ СЌР»РµРјРµРЅС‚.
+    T *linearize() {
+        if (begin_ == 0 || size_ == 0)
+            return buffer_;
+
+        T *temp = new T[size_];
+        if (begin_ <= end_)
+            memcpy(temp, buffer_ + begin_, size_ * sizeof(T));
+        else {
+            memcpy(temp, buffer_ + begin_, (capacity_ - begin_) * sizeof(T));
+            memcpy(temp + (capacity_ - begin_), buffer_, (end_ + 1) * sizeof(T)); // <------Р—РґРµСЃСЊ
+        }
+        memcpy(buffer_, temp, size_ * sizeof(T));
+        delete[](temp);
+        begin_ = 0;
+        end_ = size_ - 1;
+        return buffer_;
+    }
+    //РџСЂРѕРІРµСЂСЏРµС‚, СЏРІР»СЏРµС‚СЃСЏ Р»Рё Р±СѓС„РµСЂ Р»РёРЅРµР°СЂРёР·РѕРІР°РЅРЅС‹Рј.
+    [[nodiscard]] bool is_linearized() const {
+        return (begin_ == 0);
+    }
+    //РЎРґРІРёРіР°РµС‚ Р±СѓС„РµСЂ С‚Р°Рє, С‡С‚Рѕ РїРѕ РЅСѓР»РµРІРѕРјСѓ РёРЅРґРµРєСЃСѓ РѕРєР°Р¶РµС‚СЃСЏ СЌР»РµРјРµРЅС‚
+    //СЃ РёРЅРґРµРєСЃРѕРј new_begin.
+    void rotate(int new_begin) {
+        if (size_ == 0)
+            return;
+
+        if (size_ == capacity_) {
+            begin_ = (begin_ + new_begin) % capacity_;
+            end_ = (end_ + new_begin) % capacity_;
+            return;
+        }
+
+        for (int i = 0; i < new_begin; i++) {
+            buffer_[(end_ + 1 + i) % capacity_] = buffer_[(begin_ + i) % capacity_]; //РЎР»РёС€РєРѕРј РїСЂРѕСЃС‚Рѕ С‡С‚РѕР±С‹ Р±С‹С‚СЊ РїСЂР°РІРґРѕР№
+        }
+        begin_ = (begin_ + new_begin) % capacity_;
+        end_ = (end_ + new_begin) % capacity_;
+    }
+    //РљРѕР»РёС‡РµСЃС‚РІРѕ СЌР»РµРјРµРЅС‚РѕРІ, С…СЂР°РЅСЏС‰РёС…СЃСЏ РІ Р±СѓС„РµСЂРµ.
+    [[nodiscard]] int size() const {
+        return size_;
+    }
+    [[nodiscard]] bool empty() const {
+        return (size_ == 0);
+    }
+    //true, РµСЃР»Рё size() == capacity().
+    [[nodiscard]] bool full() const {
+        return (size_ == capacity_);
+    }
+    //РљРѕР»РёС‡РµСЃС‚РІРѕ СЃРІРѕР±РѕРґРЅС‹С… СЏС‡РµРµРє РІ Р±СѓС„РµСЂРµ.
+    [[nodiscard]] int reserve() const {
+        return (capacity_ - size_);
+    }
+    //С‘РјРєРѕСЃС‚СЊ Р±СѓС„РµСЂР°
+    [[nodiscard]] int capacity() const {
+        return capacity_;
+    }
+
+    void set_capacity(int new_capacity) {
+        if (new_capacity == 0) {
+            delete[](buffer_);
+            begin_ = 0;
+            end_ = 0;
+            size_ = 0;
+            capacity_ = 0;
+            return;
+        }
+
+        if (new_capacity == capacity_)
+            return;
+
+        linearize();
+        T *temp = new T[new_capacity];
+        if (size_ <= new_capacity) {
+            memcpy(temp, buffer_, size_ * sizeof(T));
+            delete[](buffer_);
+            buffer_ = temp;
+            capacity_ = new_capacity;
+        } else {
+            memcpy(temp, buffer_, new_capacity * sizeof(T));
+            delete[](buffer_);
+            buffer_ = temp;
+            capacity_ = new_capacity;
+        }
+    }
+
+    //РР·РјРµРЅСЏРµС‚ СЂР°Р·РјРµСЂ Р±СѓС„РµСЂР°.
+    //Р’ СЃР»СѓС‡Р°Рµ СЂР°СЃС€РёСЂРµРЅРёСЏ, РЅРѕРІС‹Рµ СЌР»РµРјРµРЅС‚С‹ Р·Р°РїРѕР»РЅСЏСЋС‚СЃСЏ СЌР»РµРјРµРЅС‚РѕРј item.
+    void resize(int new_size, const T &item = T()) {
+        if (new_size > capacity_)
+            throw std::length_error("Size can't be greater than capacity.");
+
+        if (new_size == size_)
+            return;
+
+        if (new_size < size_) {
+            end_ = (begin_ + new_size - 1) % capacity_;
+            size_ = new_size;
+        } else {
+            for (int i = 0; i < size_ - new_size; i++)
+                buffer_[(end_ + 1 + i) % capacity_] = item;
+            end_ = (begin_ + new_size - 1) % capacity_;
+            size_ = new_size;
+        }
+    }
+
+    //РћРїРµСЂР°С‚РѕСЂ РїСЂРёСЃРІР°РёРІР°РЅРёСЏ.
+    CircularBuffer &operator=(const CircularBuffer &cb) {
+        if (this == &cb)
+            return *this;
+
+        delete[](buffer_);
+        buffer_ = new T[cb.capacity_];
+        begin_ = cb.begin_;
+        end_ = cb.begin_;
+        size_ = cb.size_;
+        capacity_ = cb.capacity_;
+        for (int i = 0; i < size_; i++)
+        {
+            buffer_[(begin_ + i) % capacity_] = cb.buffer_[(begin_ + i) % capacity_];
+        }
+        return *this;
+    }
+
+    //РћР±РјРµРЅРёРІР°РµС‚ СЃРѕРґРµСЂР¶РёРјРѕРµ Р±СѓС„РµСЂР° СЃ Р±СѓС„РµСЂРѕРј cb.
+    void swap(CircularBuffer &cb) {
+        CircularBuffer temp = *this;
+        *this = cb;
+        cb = temp;
+    }
+
+    //Р”РѕР±Р°РІР»СЏРµС‚ СЌР»РµРјРµРЅС‚ РІ РєРѕРЅРµС† Р±СѓС„РµСЂР°.
+    //Р•СЃР»Рё С‚РµРєСѓС‰РёР№ СЂР°Р·РјРµСЂ Р±СѓС„РµСЂР° СЂР°РІРµРЅ РµРіРѕ С‘РјРєРѕСЃС‚Рё, С‚Рѕ РїРµСЂРµРїРёСЃС‹РІР°РµС‚СЃСЏ
+    //РїРµСЂРІС‹Р№ СЌР»РµРјРµРЅС‚ Р±СѓС„РµСЂР° (С‚.Рµ., Р±СѓС„РµСЂ Р·Р°РєРѕР»СЊС†РѕРІР°РЅ).
+    void push_back(const T &item = T()) {
+        if (capacity_ == 0)
+            throw std::overflow_error("Can't push to buffer with zero capacity");
+        if (size_ == 0)
+        {
+            buffer_[end_] = item;
+            size_++;
+            return;
+        }
+        if (size_ < capacity_) {
+            end_ = (end_ + 1) % capacity_;
+            buffer_[end_] = item;
+            size_++;
+        } else {
+            begin_ = (begin_ + 1) % capacity_;
+            end_ = (end_ + 1) % capacity_;
+            buffer_[end_] = item;
+        }
+    }
+
+    //Р”РѕР±Р°РІР»СЏРµС‚ РЅРѕРІС‹Р№ СЌР»РµРјРµРЅС‚ РїРµСЂРµРґ РїРµСЂРІС‹Рј СЌР»РµРјРµРЅС‚РѕРј Р±СѓС„РµСЂР°.
+    //РђРЅР°Р»РѕРіРёС‡РЅРѕ push_back, РјРѕР¶РµС‚ РїРµСЂРµРїРёСЃР°С‚СЊ РїРѕСЃР»РµРґРЅРёР№ СЌР»РµРјРµРЅС‚ Р±СѓС„РµСЂР°.
+    void push_front(const T &item = T()) {
+        if (capacity_ == 0)
+            throw std::overflow_error("Can't push to buffer with zero capacity");
+
+        if (size_ < capacity_) {
+            begin_ = ((begin_ == 0) ? capacity_ - 1 : begin_ - 1);
+            buffer_[begin_] = item;
+            size_++;
+        } else {
+            begin_ = ((begin_ == 0) ? capacity_ - 1 : begin_ - 1);
+            end_ = ((end_ == 0) ? capacity_ - 1 : end_ - 1);
+            buffer_[begin_] = item;
+        }
+    }
+
+    //СѓРґР°Р»СЏРµС‚ РїРѕСЃР»РµРґРЅРёР№ СЌР»РµРјРµРЅС‚ Р±СѓС„РµСЂР°.
+    void pop_back() {
+        end_ = ((end_ == 0) ? capacity_ - 1 : end_ - 1);
+        size_--;
+    }
+
+    //СѓРґР°Р»СЏРµС‚ РїРµСЂРІС‹Р№ СЌР»РµРјРµРЅС‚ Р±СѓС„РµСЂР°.
+    void pop_front() {
+        begin_ = (begin_ + 1) % capacity_;
+        size_--;
+    }
+
+    //Р’СЃС‚Р°РІР»СЏРµС‚ СЌР»РµРјРµРЅС‚ item РїРѕ РёРЅРґРµРєСЃСѓ pos. РЃРјРєРѕСЃС‚СЊ Р±СѓС„РµСЂР° РѕСЃС‚Р°РµС‚СЃСЏ РЅРµРёР·РјРµРЅРЅРѕР№.
+    void insert(int pos, const T &item = T()) {
+        if (capacity_ == 0)
+            throw std::overflow_error("Can't push to buffer with zero capacity");
+        if (size_ == capacity_)
+            throw std::overflow_error("Can't insert to full buffer");
+        if (pos > size_)
+            throw std::invalid_argument("Wrong Insert position");
+
+        for (int i = 0; i < size_ - pos; i++)
+            buffer_[(capacity_ + end_ - i + 1) % capacity_] = buffer_[(capacity_ + end_ - i) % capacity_];
+        buffer_[pos] = item;
+        size_++;
+        end_ = (end_ + 1) % capacity_;
+    }
+
+    //РЈРґР°Р»СЏРµС‚ СЌР»РµРјРµРЅС‚С‹ РёР· Р±СѓС„РµСЂР° РІ РёРЅС‚РµСЂРІР°Р»Рµ [first, last).
+    void erase(int first, int last) {
+        int shift = last - first;
+        for (int i = 0; i < shift; i++)
+            buffer_[(first + i) % capacity_] = buffer_[(first + shift + i) % capacity_];
+        size_ -= shift;
+        end_ = (capacity_ + end_ - shift) % capacity_;
+    }
+
+    //РћС‡РёС‰Р°РµС‚ Р±СѓС„РµСЂ.
+    void clear() {
+        if (capacity_ == 0)
+            return;
+        delete[](buffer_);
+        begin_ = 0;
+        end_ = 0;
+        size_ = 0;
+        capacity_ = 0;
+    }
+
+    friend bool operator==(const CircularBuffer& a, const CircularBuffer& b) {
+        if (&a == &b)
+            return true;
+        if (a.size_ != b.size_)
+            return false;
+        if (a.capacity_ != b.capacity_)
+            return false;
+
+        for (int i = 0; i < a.size_; i++) {
+            if (a.buffer_[(a.begin_ + i) % a.capacity_] != b.buffer_[(b.begin_ + i) % b.capacity_])
+                return false;
+        }
+
+        return true;
+    }
+
+    friend bool operator!=(const CircularBuffer &a, const CircularBuffer &b) {
+        if (&a == &b)
+            return false;
+        if (a.size_ != b.size_)
+            return true;
+        if (a.capacity_ != b.capacity_)
+            return true;
+        for (int i = 0; i < a.size_; i++)
+            if (a.buffer_[(a.begin_ + i) % a.capacity_] != b.buffer_[(b.begin_ + i) % b.capacity_])
+                return true;
+
+        return false;
+    }
 };
-
