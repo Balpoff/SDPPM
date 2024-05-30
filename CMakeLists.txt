@@ -1,11 +1,23 @@
-cmake_minimum_required(VERSION 3.22)
-set(CMAKE_CXX_STANDARD 20)
-project(CircularBuffer)
+cmake_minimum_required(VERSION 3.0.0)
 
-include_directories(${PROJECT_SOURCE_DIR}/include)
+set(This auto)
 
-add_executable(CircularBuffer scr/main.cpp include/CircularBuffer.h)
+project(${This} C CXX)
 
-add_library(CircularBuffer_Lib SHARED include/CircularBuffer.h)
-set_target_properties(CircularBuffer_Lib PROPERTIES LINKER_LANGUAGE CXX)
-add_subdirectory(test)
+set(CMAKE_C_STANDARD 99)
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+enable_testing()
+
+add_subdirectory(googletest)
+
+set(Headers
+    funcs.h
+)
+set(Sources
+    funcs.cpp
+)
+
+add_library(${This} STATIC ${Sources} ${HEaders})
+add_subdirectory(tests)
