@@ -11,5 +11,5 @@ TEST(SecondTest, ZeroTests){
 }
 
 TEST(TherdTest, CheckActions){
-    EXPECT_EQ(my_sum(2, 2), 5);
+    EXPECT_EQ(my_sum(2, 2), 4);
 }
